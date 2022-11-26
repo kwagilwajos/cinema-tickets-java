@@ -1,11 +1,8 @@
 package uk.gov.dwp.uc.pairtest;
 
 import thirdparty.paymentgateway.TicketPaymentService;
-import thirdparty.paymentgateway.TicketPaymentServiceImpl;
 import thirdparty.seatbooking.SeatReservationService;
-import thirdparty.seatbooking.SeatReservationServiceImpl;
 import uk.gov.dwp.uc.account.AccountService;
-import uk.gov.dwp.uc.account.AccountServiceImpl;
 import uk.gov.dwp.uc.pairtest.domain.TicketTypeRequest;
 import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
 
@@ -19,9 +16,17 @@ import static uk.gov.dwp.uc.pairtest.domain.TicketTypeRequest.Type.*;
 public class TicketServiceImpl implements TicketService {
 
     // Declarations
-    private static final AccountService accountService = new AccountServiceImpl();
-    private static final TicketPaymentService ticketPaymentService = new TicketPaymentServiceImpl();
-    private static final SeatReservationService seatReservationService = new SeatReservationServiceImpl();
+    private final AccountService accountService;
+    private final TicketPaymentService ticketPaymentService;
+    private final SeatReservationService seatReservationService;
+
+    public TicketServiceImpl(AccountService accountService,
+                             TicketPaymentService ticketPaymentService,
+                             SeatReservationService seatReservationService) {
+        this.accountService = accountService;
+        this.ticketPaymentService = ticketPaymentService;
+        this.seatReservationService = seatReservationService;
+    }
 
     @Override
     public void purchaseTickets(Long accountId, TicketTypeRequest... ticketTypeRequests) throws InvalidPurchaseException {
@@ -29,7 +34,7 @@ public class TicketServiceImpl implements TicketService {
 
         var amountToBePaid = calculateBookingAmount(ticketBooking);
 
-        makePayment(accountId,amountToBePaid);
+        makePayment(accountId, amountToBePaid);
 
         makeReservation(accountId, ticketBooking);
     }
@@ -38,7 +43,7 @@ public class TicketServiceImpl implements TicketService {
      * @param ticketTypeRequests : Domain Pojo storing Ticket type and number of tickets
      * @return Map<Type, Integer> ; Contains Ticket Type and respective number of seats booked
      */
-    private static Map<Type, Integer> bookingVerifier(TicketTypeRequest... ticketTypeRequests) {
+    private Map<Type, Integer> bookingVerifier(TicketTypeRequest... ticketTypeRequests) {
         // Check number of tickets
         var numberOfTickets = Arrays.stream(ticketTypeRequests)
                 .filter(x -> x.getTicketType() != INFANT)
@@ -69,7 +74,7 @@ public class TicketServiceImpl implements TicketService {
      * @param ticketBooking : A map containing Ticket Type and respective number of seats booked
      * @return Int variable: contains the Amount to be paid for all the tickets
      */
-    private static int calculateBookingAmount(Map<Type, Integer> ticketBooking) {
+    private  int calculateBookingAmount(Map<Type, Integer> ticketBooking) {
         final int ADULT_FARE = 20;
         final int CHILD_FARE = 10;
         int bookingAmount = 0;
@@ -83,36 +88,36 @@ public class TicketServiceImpl implements TicketService {
         return bookingAmount;
     }
 
-
     /**
      * @param accountId : Long Type : Account ID for the account o be debited
-     * @param amount : Int Type: Amount to be debited
+     * @param amount    : Int Type: Amount to be debited
      */
-    private static void makePayment(Long accountId, int amount) {
+    private  void makePayment(long accountId, int amount) {
         if (!accountService.validateAccount(accountId)) throw new InvalidPurchaseException("Invalid account");
-        if(accountService.checkBalance(accountId) < amount) throw  new InvalidPurchaseException("Insufficient funds from the account");
+        if (accountService.checkBalance(accountId) < amount)
+            throw new InvalidPurchaseException("Insufficient funds from the account");
 
-       try {
-           ticketPaymentService.makePayment(accountId,amount);
-       }catch (Exception e){
-           throw new InvalidPurchaseException("Something went wrong during making payment: "+ e.getMessage());
-       }
+        try {
+            ticketPaymentService.makePayment(accountId, amount);
+        } catch (Exception e) {
+            throw new InvalidPurchaseException("Something went wrong during making payment: " + e.getMessage());
+        }
     }
 
     /**
-     * @param AccountId : identifier for account to which the reservation is to be made
+     * @param AccountId     : identifier for account to which the reservation is to be made
      * @param ticketBooking : A map containing Ticket Type and respective number of seats to be reserved.
      */
-    private static void makeReservation(Long AccountId, Map<Type, Integer> ticketBooking) {
+    private  void makeReservation(Long AccountId, Map<Type, Integer> ticketBooking) {
         var numberOfSeats = ticketBooking
                 .values()
                 .stream()
                 .mapToInt(x -> x).sum();
 
         try {
-            seatReservationService.reserveSeat(AccountId,numberOfSeats);
-        }catch (Exception e){
-            throw new InvalidPurchaseException("Something went wrong during seats reservation: "+ e.getMessage());
+            seatReservationService.reserveSeat(AccountId, numberOfSeats);
+        } catch (Exception e) {
+            throw new InvalidPurchaseException("Something went wrong during seats reservation: " + e.getMessage());
         }
     }
 
