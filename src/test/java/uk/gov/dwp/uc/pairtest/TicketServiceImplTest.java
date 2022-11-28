@@ -67,7 +67,7 @@ public class TicketServiceImplTest {
     }
 
     @Test
-    public void purchaseTicketWithInValidIdAndInvalidNumberOfSeats() {
+    public void purchaseTicketWithInValidIdAndValidNumberOfSeats() {
         long accountId = 0;
         TicketTypeRequest ticketTypeRequest1 = new TicketTypeRequest(ADULT, 5);
         TicketTypeRequest ticketTypeRequest2 = new TicketTypeRequest(CHILD, 5);
@@ -98,6 +98,25 @@ public class TicketServiceImplTest {
         String actualMessage = exception.getMessage();
 
         assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void purchaseTicketWithValidIdAndInvalidAmount() {
+        long accountId = 23412;
+        TicketTypeRequest ticketTypeRequest1 = new TicketTypeRequest(ADULT, 5);
+        TicketTypeRequest ticketTypeRequest2 = new TicketTypeRequest(CHILD, 5);
+        TicketTypeRequest ticketTypeRequest3 = new TicketTypeRequest(INFANT, 5);
+
+        ticketService = new TicketServiceImpl(accountService, ticketPaymentService, seatReservationService);
+        when(accountService.checkBalance(isA(Long.TYPE))).thenReturn(100);
+
+        Exception exception = assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(accountId,
+                ticketTypeRequest1, ticketTypeRequest2, ticketTypeRequest3));
+
+        String expectedMessage = "Insufficient funds from the account";
+        String actualMessage = exception.getMessage();
+
+        assertEquals(actualMessage, expectedMessage);
     }
 
 }
